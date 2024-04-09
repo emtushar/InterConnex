@@ -1,5 +1,4 @@
 import { v2 as cloudinary } from "cloudinary";
-import { asyncHandler } from "./asyncHandler.js";
 import fs from "fs";
 
 cloudinary.config({
@@ -8,7 +7,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const uploadOnCloudinary = asyncHandler(async (localFilePath) => {
+const uploadOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) {
       return null;
@@ -22,6 +21,6 @@ const uploadOnCloudinary = asyncHandler(async (localFilePath) => {
     fs.unlinkSync(localFilePath);
     return null;
   }
-});
+};
 
 export { uploadOnCloudinary };
