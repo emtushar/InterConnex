@@ -16,7 +16,7 @@ const verifyJwt = asyncHandler(async (req, res, next) => {
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET_KEY);
 
     const user = await User.findById(decodedToken._id).select(
-      "-password -refreshToken"
+      "-password -refreshToken -followers -followings"
     );
     if (!user) {
       throw new ApiError(401, "Invalid token");

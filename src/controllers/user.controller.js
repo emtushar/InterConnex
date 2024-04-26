@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import jwt from "jsonwebtoken";
 
 const createAccessAndRefreshTokens = async function (userId) {
   // get user from userid
@@ -239,9 +240,125 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   // match user refresh token with db refresh token
   // if matched
   // generate refresh and access token
-  const { incomingRefreshToken } = req.cookies?.refreshToken;
+  const incomingRefreshToken =
+    req.cookies?.refreshToken || req.body.refreshToken;
+
   if (!incomingRefreshToken) {
-    throw new ApiError(400, "Can't find token");
+    throw new ApiError(401, "Unauthorized Request");
+  }
+  // const user = await User.findById(req.user?._id);
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET_KEY
+    );
+
+    const user = await User.findById(decodedToken?._id);
+    if (!user) {
+      throw new ApiError(400, "Invalid Refresh Token");
+    }
+
+    if (incomingRefreshToken !== user.refreshToken) {
+      throw new ApiError(400, "Token is either expired or old");
+    }
+    const { accessToken, newRefreshToken } = await createAccessAndRefreshTokens(
+      user._id
+    );
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+    return res
+      .status(201)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          201,
+          { accessToken: accessToken, refreshToken: newRefreshToken },
+          "access token refreshed successfully"
+        )
+      );
+  } catch (error) {
+    throw new ApiError(400, error?.message || "Invalid Token");
+  }
+});
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "User Fetched successfully"));
+});
+
+const getUserProfile = asyncHandler(async (req, res) => {
+  // get user from params
+  // find user by id
+  // res user with followers and followings
+  const { username } = req.params;
+  const user = await User.findOne({ username }).select(
+    "-password -refreshToken"
+  );
+  if (!user) {
+    throw new ApiError(400, "Invalid username");
+  }
+  return res
+    .status(201)
+    .json(new ApiResponse(201, user, "User's Profile fetched successfully"));
+});
+
+const toggleFollowUser = asyncHandler(async (req, res) => {
+  // get user to follow id throught params
+  // get user who wants to follow through auth
+  // check if user to follow is valid
+  // check if user to follow is present in follower of current user
+  // if present then remove
+  // if not then add
+  // return updated userin response
+  const userToBeFollowedId = req.params.id;
+  const currentUserId = req.user?.id;
+
+  // const userToBeFollwed = await User.findById(userToBeFollowedId);
+  // const currentUser = await User.findById(currentUserId);
+
+  // if (!currentUser.followers.includes(userToBeFollowedId)) {
+  //   currentUser.followers.push(userToBeFollowedId);
+  //   userToBeFollwed.followings.push(currentUserId);
+  // }
+  console.log(currentUserId);
+  const follower = await User.findOne({
+    _id: currentUserId,
+    followings: { $in: [userToBeFollowedId] },
+  });
+  if (!follower) {
+    // currentUser.followers.push(userToBeFollowedId);
+    // userToBeFollwed.followings.push(currentUserId);
+    await User.updateOne(
+      { _id: userToBeFollowedId },
+      { $push: { followers: currentUserId } }
+    );
+    await User.updateOne(
+      { _id: currentUserId },
+      { $push: { followings: userToBeFollowedId } }
+    );
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, {}, "Followed Account Successfully"));
+  }
+  if (follower) {
+    // currentUser.followers.pull(userToBeFollowedId);
+    // userToBeFollwed.followings.pull(currentUserId);
+    await User.updateOne(
+      { _id: userToBeFollowedId },
+      { $pull: { followers: currentUserId } }
+    );
+    await User.updateOne(
+      { _id: currentUserId },
+      { $pull: { followings: userToBeFollowedId } }
+    );
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, {}, "Unfollowed Account Successfully"));
   }
 });
 
@@ -253,4 +370,7 @@ export {
   changeUserPassword,
   changeUserDetails,
   refreshAccessToken,
+  getCurrentUser,
+  getUserProfile,
+  toggleFollowUser,
 };

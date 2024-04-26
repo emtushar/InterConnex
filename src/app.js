@@ -2,6 +2,7 @@ import express from "express";
 import { userRouter } from "./routes/user.route.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import postRouter from "./routes/post.route.js";
 
 const app = express();
 
@@ -17,6 +18,8 @@ app.use(
 app.use(express.static("public/temp"));
 
 app.use("/api/v1/user", userRouter);
+
+app.use("/api/v1/post", postRouter);
 
 app.get("/", (req, res) => {
   res.send("<h2>Hello</h2>");
