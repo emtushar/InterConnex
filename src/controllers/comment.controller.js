@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import Comment from "../models/comment.model.js";
+import Like from "../models/like.model.js";
 
 const createComment = asyncHandler(async (req, res) => {
   // get content ofcomment from body
@@ -91,4 +92,48 @@ const getComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, comment, "Comment fetched successfully"));
 });
 
-export { createComment, deleteComment, updateComment, getComment };
+const toggleCommmentLike = asyncHandler(async (req, res) => {
+  // get commentid from params
+  // find like model from req.user
+  // if like model
+  const { commentId } = req.params;
+  const userLike = await Like.findOne({ likedBy: req.user?._id }).select(
+    "-post"
+  );
+  if (!userLike) {
+    const likedUser = await Like.create({
+      $push: { comment: commentId },
+      likedBy: req.user?._id,
+    });
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, likedUser, "Comment liked successfully"));
+  }
+  if (!userLike.comment.includes(commentId)) {
+    userLike?.comment.push(commentId);
+    userLike.save({ validateBeforeSave: false });
+    return res
+      .status(200)
+      .json(new ApiResponse(200, userLike, "Comment liked successfully"));
+  }
+  const unlikedUser = await Like.findByIdAndUpdate(
+    userLike?._id,
+    {
+      $pull: { comment: commentId },
+    },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, unlikedUser, "comment unliked successfully"));
+});
+
+export {
+  createComment,
+  deleteComment,
+  updateComment,
+  getComment,
+  toggleCommmentLike,
+};

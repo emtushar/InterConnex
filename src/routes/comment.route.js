@@ -4,6 +4,7 @@ import {
   createComment,
   deleteComment,
   getComment,
+  toggleCommmentLike,
 } from "../controllers/comment.controller.js";
 import { Router } from "express";
 
@@ -18,5 +19,7 @@ commentRouter.route("/delete/:commentId").post(deleteComment);
 commentRouter.route("/update/:commentId").patch(updateComment);
 
 commentRouter.route("/:commentId").get(getComment);
+
+commentRouter.route("/toggle-like/:commentId").patch(toggleCommmentLike);
 
 export default commentRouter;

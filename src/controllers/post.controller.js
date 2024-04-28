@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Post } from "../models/post.model.js";
+import Like from "../models/like.model.js";
 
 const createPost = asyncHandler(async (req, res) => {
   // get user from req.user
@@ -119,4 +120,54 @@ const getAllPosts = asyncHandler(async (req, res) => {
   // getcurrent user find all its posts
 });
 
-export { createPost, deletePost, updateCaption, getPostDetails, getAllPosts };
+const toggleLikePost = asyncHandler(async (req, res) => {
+  // get post id by parmas
+  // find owner
+  // if does not exists then push
+  // if exists check
+  const { postId } = req.params;
+  const userLike = await Like.findOne({ likedBy: req.user?._id }).select(
+    "-comment"
+  );
+
+  if (!userLike) {
+    const postLiked = await Like.create({
+      $push: { post: postId },
+      likedBy: req.user?._id,
+    }).select("-comment");
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, postLiked, "Liked post successfully"));
+  }
+
+  if (!userLike?.post.includes(postId)) {
+    userLike?.post.push(postId);
+    userLike.save({ validateBeforeSave: false });
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, userLike, "Liked post successfully"));
+  }
+
+  const unlikedPost = await Like.findByIdAndUpdate(
+    userLike?._id,
+    {
+      $pull: { post: postId },
+    },
+    { new: true }
+  ).select("-comment");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, unlikedPost, "Post unliked successfully"));
+});
+
+export {
+  createPost,
+  deletePost,
+  updateCaption,
+  getPostDetails,
+  getAllPosts,
+  toggleLikePost,
+};
