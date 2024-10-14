@@ -107,6 +107,7 @@ const loginUser = asyncHandler(async (req, res) => {
     httpOnly: true,
     secure: true,
     sameSite: "None", // Add this line
+    domain: process.env.COOKIE_DOMAIN,
   };
   return res
     .status(201)
