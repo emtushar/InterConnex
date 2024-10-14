@@ -4,7 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Post } from "../models/post.model.js";
 import Like from "../models/like.model.js";
-
+import mongoose from "mongoose";
 const createPost = asyncHandler(async (req, res) => {
   // get user from req.user
   // get post details like mediafile ,caption from body
@@ -15,21 +15,25 @@ const createPost = asyncHandler(async (req, res) => {
   // return created post
 
   const { caption } = req.body;
-  const mediaLocalFilePath = req.file?.path;
-
-  if (!mediaLocalFilePath) {
-    throw new ApiError(400, "Media File is required");
+  let mediaLocalFilePath;
+  if (req.file) {
+    mediaLocalFilePath = req.file?.path;
   }
+  // const mediaLocalFilePath = req.file?.path;
+
+  // if (!mediaLocalFilePath) {
+  //   throw new ApiError(400, "Media File is required");
+  // }
 
   const mediaFile = await uploadOnCloudinary(mediaLocalFilePath);
-
-  if (!mediaFile?.url) {
-    throw new ApiError(500, "Failed to upload media on cloudinary,try again");
-  }
+  console.log(mediaFile?.url);
+  // if (!mediaFile?.url) {
+  //   throw new ApiError(500, "Failed to upload media on cloudinary,try again");
+  // }
 
   const createdPost = await Post.create({
     caption,
-    mediaFile: mediaFile.url,
+    mediaFile: mediaFile?.url || "",
     owner: req.user?._id,
   });
 
@@ -114,10 +118,52 @@ const getPostDetails = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(201, postDetails, "Post details fetched successfully")
     );
+  s;
 });
 
 const getAllPosts = asyncHandler(async (req, res) => {
   // getcurrent user find all its posts
+  // const { page = 1, limit = 5, query, sortBy = 1, sortType } = req.query;
+  // console.log(query);
+  // const options = {
+  //   page: parseInt(page),
+  //   limit: parseInt(limit),
+  //   sort: { [sortBy]: parseInt(sortType) },
+  // };
+
+  const options = {
+    page: 1,
+    limit: 20,
+  };
+  // {
+  //   $sort: options.sort,
+  // },
+
+  const aggregateOptions = [
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(req.user?._id),
+      },
+    },
+  ];
+  try {
+    await Post.aggregatePaginate(
+      aggregateOptions,
+      options,
+      function (err, results) {
+        if (err) {
+          throw new ApiError(500, "Failed to get post");
+        } else {
+          // console.log(results);
+          return res
+            .status(200)
+            .json(new ApiResponse(200, results, "Posts fetched successfully"));
+        }
+      }
+    );
+  } catch (error) {
+    throw new ApiError(500, error.message);
+  }
 });
 
 const toggleLikePost = asyncHandler(async (req, res) => {

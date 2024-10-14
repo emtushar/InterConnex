@@ -28,7 +28,7 @@ const registerUser = asyncHandler(async (req, res) => {
   // check if user is created
   // give error if user is not created
   // return created user
-
+  console.log(req.body);
   const { fullName, email, username, password, mobile } = req.body;
 
   if (
@@ -45,22 +45,24 @@ const registerUser = asyncHandler(async (req, res) => {
   }
   console.log(req.file);
   const avatarLocalPath = req.file?.path;
+  // const avatarLocalPath = req.file?.path;
+
   console.log(avatarLocalPath);
   if (!avatarLocalPath) {
     throw new ApiError(400, "avatar file is required");
   }
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
-  if (!avatar.url) {
+  const avatarUrl = await uploadOnCloudinary(avatarLocalPath);
+  if (!avatarUrl.url) {
     throw new ApiError(500, "Failed to upload avatar file");
   }
-
+  console.log(avatarUrl);
   const createdUser = await User.create({
     email,
     fullName,
     mobile,
     username,
     password,
-    avatar: avatar.url,
+    avatar: avatarUrl.url,
   });
 
   const user = await User.findById(createdUser._id).select(

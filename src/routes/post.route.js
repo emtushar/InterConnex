@@ -7,6 +7,7 @@ import {
   getPostDetails,
   toggleLikePost,
   updateCaption,
+  getAllPosts,
 } from "../controllers/post.controller.js";
 
 const postRouter = Router();
@@ -22,5 +23,7 @@ postRouter.route("/update/:postId").patch(verifyJwt, updateCaption);
 postRouter.route("/post-details/:postId").get(verifyJwt, getPostDetails);
 
 postRouter.route("/toggle-like/:postId").patch(verifyJwt, toggleLikePost);
+
+postRouter.route("/all-posts").get(verifyJwt, getAllPosts);
 
 export default postRouter;
